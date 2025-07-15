@@ -1,6 +1,6 @@
 [package]
 name = "nepdate-cli"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 authors = ["Khumnath <nath.khum@gmail.com>"]
 description = "A library for converting between Gregorian and Bikram Sambat (Nepali) dates."
