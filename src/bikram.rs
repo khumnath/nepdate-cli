@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
- 
+
 
  #[allow(dead_code)] // Allow unused fields that are initialized and used for derived values
  pub struct Bikram {
@@ -29,13 +29,13 @@
      planet_apogee_sun: f64,
      planet_circum_sun: f64,
  }
- 
+
  const RAD: f64 = 180.0 / std::f64::consts::PI;
  const BS_START_YEAR: i32 = 2000;
- const JULIAN_EPOCH_2000_BS: f64 = 2430910.5; // 14 April 1943
- 
+ const JULIAN_EPOCH_2000_BS: f64 = 2430828.5; // 14 April 1943
+
  include!("./precomputed_data.rs"); // Contains NP_MONTHS_DATA: [[i32; 13]; N], NP_DATA_YEAR_COUNT
- 
+
  impl Bikram {
      pub fn new() -> Self {
          let yuga_rotation_star = 1582237828.0;
@@ -51,30 +51,24 @@
              planet_circum_sun: 13.0 + 50.0 / 60.0,
          }
      }
- 
+
      pub fn from_gregorian(&mut self, y: i32, m: i32, d: i32) {
          let julian = self.get_julian_date(y, m, d);
-         let diff = (julian - JULIAN_EPOCH_2000_BS) as i64;
+         let mut diff = (julian - JULIAN_EPOCH_2000_BS) as i64;
          let mut bs_year = BS_START_YEAR;
          if diff >= 0 {
              // Ensure we don't go out of bounds for NP_MONTHS_DATA
              while (bs_year - BS_START_YEAR) < NP_DATA_YEAR_COUNT as i32 {
-                 let mut current_year_diff = diff;
-                 let mut found_in_precomputed = false;
                  for month_idx in 0..12 {
                      let days = NP_MONTHS_DATA[(bs_year - BS_START_YEAR) as usize][month_idx];
-                     if current_year_diff < days as i64 {
+                     if diff < days as i64 {
                          self.year = bs_year;
                          self.month = (month_idx + 1) as i32;
-                         self.day = (current_year_diff + 1) as i32;
-                         found_in_precomputed = true;
-                         break;
+                         self.day = (diff + 1) as i32;
+                         return;
                      } else {
-                         current_year_diff -= days as i64;
+                         diff -= days as i64;
                      }
-                 }
-                 if found_in_precomputed {
-                     return;
                  }
                  bs_year += 1; // Move to the next year
              }
@@ -82,7 +76,7 @@
          // Fallback to astronomical if outside precomputed range or diff is negative
          self.from_gregorian_astronomical(y, m, d);
      }
- 
+
      pub fn to_gregorian(&self, bs_year: i32, bs_month: i32, bs_day: i32) -> (i32, i32, i32) {
          if bs_year >= BS_START_YEAR && (bs_year - BS_START_YEAR) < NP_DATA_YEAR_COUNT as i32 {
              let mut days = 0;
@@ -98,7 +92,7 @@
          }
          self.to_gregorian_astronomical(bs_year, bs_month, bs_day)
      }
- 
+
      fn from_gregorian_astronomical(&mut self, y: i32, m: i32, d: i32) {
          let julian = self.get_julian_date(y, m, d);
          let ahar = (julian - 588465.5) as i64;
@@ -110,7 +104,7 @@
          self.month = ((sm_num + 12) % 12) + 1;
          self.day = sm_day;
      }
- 
+
      fn to_gregorian_astronomical(&self, bs_year: i32, bs_month: i32, bs_day: i32) -> (i32, i32, i32) {
          let year_saka = bs_year - 135;
          let year_kali = year_saka + 3179;
@@ -127,7 +121,7 @@
          let jd = ahar as f64 + 588465.5;
          self.from_julian_date(jd)
      }
- 
+
      fn get_saura_masa_day(&self, ahar: i64) -> (i32, i32) {
          if self.today_saura_masa_first_p(ahar) {
              let tslong_tomorrow = self.get_tslong(ahar + 1);
@@ -139,7 +133,7 @@
              (prev_month, day)
          }
      }
- 
+
      fn today_saura_masa_first_p(&self, ahar: i64) -> bool {
          let today = self.get_tslong(ahar) % 30.0;
          let tomorrow = self.get_tslong(ahar + 1) % 30.0;
@@ -148,7 +142,7 @@
          let tomorrow_mod = (tomorrow + 30.0) % 30.0;
          today_mod > 25.0 && tomorrow_mod < 5.0
      }
- 
+
      fn get_tslong(&self, ahar: i64) -> f64 {
          let mut t1 = (self.yuga_rotation_sun * ahar as f64) / self.yuga_civil_days;
          t1 -= t1.floor();
@@ -160,7 +154,7 @@
          let x2 = y3.asin() * RAD;
          mslong - x2
      }
- 
+
      fn get_julian_date(&self, y: i32, m: i32, d: i32) -> f64 {
          let (mut y, mut m) = (y, m);
          if m <= 2 {
@@ -173,7 +167,7 @@
              + (30.6001 * (m as f64 + 1.0)).floor()
              + d as f64 + b - 1524.5
      }
- 
+
      fn from_julian_date(&self, jd: f64) -> (i32, i32, i32) {
          let z = (jd + 0.5).floor() as i32;
          let a = if z < 2299161 {
@@ -191,11 +185,11 @@
          let year = if month > 2 { c - 4716 } else { c - 4715 };
          (year, month, day)
      }
- 
+
      pub fn get_year(&self) -> i32 { self.year }
      pub fn get_month(&self) -> i32 { self.month }
      pub fn get_day(&self) -> i32 { self.day }
- 
+
      pub fn days_in_month(&self, bs_year: i32, bs_month: i32) -> i32 {
          if bs_year >= BS_START_YEAR && (bs_year - BS_START_YEAR) < NP_DATA_YEAR_COUNT as i32 {
              NP_MONTHS_DATA[(bs_year - BS_START_YEAR) as usize][(bs_month - 1) as usize]
@@ -211,6 +205,5 @@
              (jd2 - jd1) as i32
          }
      }
- 
+
  }
- 
